@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Лента подписки{% endblock %}
+{% block header %}Лента подписки{% endblock %}
+{% block content %}
+{% load cache %}
+    {% cache 20 index_page with page %}
+
+    {% for post in page_obj %}
+    {% include 'posts/group_list.html' %}
+        {% if post.group  and not group %}   
+            <a href="{% url 'posts:group_list' post.group.slug  %}">все записи группы</a>           
+            {% endif %} 
+        {% if not forloop.last %}<hr>{% endif %} 
+        </article> 
+    {% endfor %} 
+    {% endcache %}
+    {% include 'posts/includes/paginator.html' %}
+{% endblock %}
