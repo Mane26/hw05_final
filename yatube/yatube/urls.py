@@ -27,6 +27,7 @@ urlpatterns = [
     path('auth/', include('django.contrib.auth.urls')),
     path('auth/', include('django.contrib.auth.urls')),
 ]
+handler403 = "posts.views.permission_denied"
 handler404 = "posts.views.page_not_found"
 handler500 = "posts.views.server_error"
 if settings.DEBUG:
