@@ -17,8 +17,6 @@ urlpatterns = [
          name='profile_follow'),
     path('profile/<str:username>/unfollow/', views.profile_unfollow,
          name='profile_unfollow'),
-    path("404/", views.page_not_found, name="404"),
-    path("500/", views.server_error, name="500"),
     path('posts/<int:post_id>/comment/',
          views.add_comment, name='add_comment'),
 ]

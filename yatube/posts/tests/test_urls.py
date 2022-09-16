@@ -1,13 +1,10 @@
 from http import HTTPStatus
 
-from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from ..models import Group, Post
-
-User = get_user_model()
+from ..models import Group, Post, User
 
 
 class UserURLTests(TestCase):
@@ -41,60 +38,10 @@ class UserURLTests(TestCase):
         self.authorized_client.force_login(self.author)
         cache.clear()
 
-    def test_urls_for_everyone(self):
-        """Страницы  доступны любому пользователю."""
-        reverse_group = reverse(
-            'posts:group_list',
-            kwargs={'slug': self.group.slug}
-        )
-        reverse_user = reverse(
-            'posts:profile',
-            kwargs={'username': self.user.username}
-        )
-        reverse_post = reverse(
-            'posts:post_detail',
-            kwargs={'post_id': self.post.pk}
-        )
-        urls_list = [
-            '/',
-            reverse_group,
-            reverse_user,
-            reverse_post,
-        ]
-        for urls in urls_list:
-            response = self.guest_client.get(urls)
-            self.assertEqual(response.status_code, HTTPStatus.OK)
-
     def test_unexisting_urls(self):
         """Проверяем не существующую страницу."""
         response = self.guest_client.get('/unexisting_page/')
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
-
-    def test_template_urls_for_everyone(self):
-        """URL-адрес использует соответствующий шаблон."""
-        # Шаблоны по адресам
-        reverse_group = reverse(
-            'posts:group_list',
-            kwargs={'slug': self.group.slug}
-        )
-        reverse_user = reverse(
-            'posts:profile',
-            kwargs={'username': self.user.username}
-        )
-        reverse_post = reverse(
-            'posts:post_detail',
-            kwargs={'post_id': self.post.pk}
-        )
-        urls_set = {
-            '/': 'posts/index.html',
-            reverse_group: 'posts/group_list.html',
-            reverse_user: 'posts/profile.html',
-            reverse_post: 'posts/post_detail.html',
-        }
-        for urls, template in urls_set.items():
-            with self.subTest(urls=urls):
-                response = self.guest_client.get(urls)
-                self.assertTemplateUsed(response, template)
 
     def test_urls_for_author(self):
         """URL-адрес использует соответствующий шаблон."""
@@ -156,7 +103,8 @@ class UserURLTests(TestCase):
             self.assertRedirects(response, value)
 
     def test_create_list_url_redirect_anonymous(self):
-        """Страница /create/ перенаправляет анонимного пользователя."""
+        """Страница /create/ после redirect временно перемещается
+        на другой адрес."""
         response = self.client.get('/create/')
         self.assertEqual(response.status_code, 302)
 
