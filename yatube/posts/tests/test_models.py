@@ -1,10 +1,6 @@
-from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from ..models import Group, Post
-
-User = get_user_model()
-NUMBER_OF_CHARACTERS = 16
+from ..models import POST_COUNT, Group, Post, User
 
 
 class PostModelTest(TestCase):
@@ -19,12 +15,12 @@ class PostModelTest(TestCase):
         )
         cls.post = Post.objects.create(
             author=cls.user,
-            text='p' * NUMBER_OF_CHARACTERS,
+            text='pppppppppppppppppppppppppp' * POST_COUNT,
         )
 
     def test_post_str(self):
         """Проверка __str__ у post."""
-        self.assertEqual(self.post.text[:NUMBER_OF_CHARACTERS], str(self.post))
+        self.assertEqual(self.post.text[:POST_COUNT], str(self.post))
 
     def test_post_verbose_name(self):
         """Проверка verbose_name у post."""

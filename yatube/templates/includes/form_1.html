@@ -1,18 +1,4 @@
-{% extends 'base.html' %}
-{% load static %}
-{% load user_filters %}
-
-{% block title %}
-{% if is_edit %}
-  Редактировать запись
-{% else %}
-  Новый пост
-{% endif %}
-{% endblock %}
-
-{% block content %}
-{% include 'includes/form.html'%}
-  <form method="post" 
+<form method="post" 
         {% if is_edit %} 
             action="{% url 'posts:post_edit' post.id %}" 
         {% else %}
@@ -37,18 +23,3 @@
                {% endif %}
            </div>
         {% endfor %}
-          <div class="col-md-6 offset-md-4">
-              <button type="submit" class="btn btn-primary">
-                {% if is_edit %}
-                  Сохранить
-                {% else %}
-                  Добавить
-                {% endif %}
-              </button> 
-            </div> 
-          </form> 
-        </div> 
-      </div> 
-    </div> 
-  </div> 
-{% endblock %}
