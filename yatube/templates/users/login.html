@@ -9,7 +9,11 @@
           Войти на сайт
         </div>
         <div class="card-body">
-          {% include 'includes/form.html'%}
+          <div class="row justify-content-center"> 
+            <div class="col-md-8 p-5"> 
+              <div class="card"> 
+                <div class="card-header"> 
+          {% include 'includes/form_errors.html'%}
 
           <form method="post"
             {% if action_url %}
@@ -19,29 +23,25 @@
           {% csrf_token %}
 
           {% for field in form %}
-            <div class="form-group row my-3"
-              {% if field.field.required %} 
-                aria-required="true"
-              {% else %}
-                aria-required="false"
-              {% endif %}
-            >
-              <label for="{{ field.id_for_label }}">
-                {{ field.label }}
-                  {% if field.field.required %}
-                    <span class="required text-danger">*</span>
-                  {% endif %}
-              </label>
-              <div>
-              {{ field|addclass:'form-control' }}
-                {% if field.help_text %}
-                  <small id="{{ field.id_for_label }}-help" class="form-text text-muted">
-                    {{ field.help_text|safe }}
-                  </small>
-                {% endif %}
-              </div>
-            </div>
-          {% endfor %}
+          <div class="form-group row my-3"
+          {% if field.field.required %} 
+            aria-required="true"
+          {% else %}
+            aria-required="false"
+          {% endif %}
+          >
+          <div class="form-group row my-3 p-3">
+            {% include 'includes/form_label.html'%} 
+                {{ field|addclass:'form-control' }}
+                  {% if field.help_text %}
+                    <small
+                    id="{{ field.id_for_label }}-help"
+                    class="form-text text-muted"
+                   {{ field.help_text|safe }}
+                   </small>
+                   {% endif %}
+               </div>
+            {% endfor %}
           <div class="col-md-6 offset-md-4">
             <button type="submit" class="btn btn-primary">
               Войти

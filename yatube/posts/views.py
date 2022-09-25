@@ -1,12 +1,9 @@
 from django.contrib.auth.decorators import login_required
-from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import CommentForm, PostForm
 from .models import Follow, Group, Post, User
 from .utils import get_page
-
-POST_NUMBER = 10
 
 
 def index(request):
@@ -31,7 +28,7 @@ def group_posts(request, slug):
     group = get_object_or_404(Group, slug=slug)
     post_list = group.posts.select_related(
         'author'
-    ).order_by('-pub_date')
+    )
     page_obj = get_page(request, post_list)
     # Здесь код запроса к модели и создание словаря контекста
     context = {
@@ -54,18 +51,15 @@ def profile(request, username):
     posts_list = author.posts.all()
     page_obj = get_page(request, posts_list)
     following = False
-    following = request.user.is_authenticated
     # Здесь код запроса к модели и создание словаря контекста
     if request.user.is_authenticated:
         following = Follow.objects.filter(
             user=request.user, author=author
         ).exists()
-    profile = author
     context = {
         'author': author,
         'page_obj': page_obj,
         'following': following,
-        'profile': profile,
     }
 
     return render(request, template, context)
@@ -153,9 +147,7 @@ def add_comment(request, post_id):
 @login_required
 def follow_index(request):
     list_of_posts = Post.objects.filter(author__following__user=request.user)
-    paginator = Paginator(list_of_posts, POST_NUMBER)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
+    page_obj = get_page(request, list_of_posts)
     context = {'page_obj': page_obj}
 
     return render(request, 'posts/follow.html', context)
@@ -163,19 +155,16 @@ def follow_index(request):
 
 @login_required
 def profile_follow(request, username):
-    user = request.user
-    author = User.objects.get(username=username)
-    is_follower = Follow.objects.filter(user=user, author=author)
-    if user != author and not is_follower.exists():
-        Follow.objects.get_or_create(user=user, author=author)
-
-    return redirect('posts:profile', author)
+    author = get_object_or_404(User, username=username)
+    if author != request.user:
+        Follow.objects.get_or_create(user=request.user, author=author)
+    return redirect('posts:profile', username=username)
 
 
 @login_required
 def profile_unfollow(request, username):
     author = get_object_or_404(User, username=username)
-    is_follower = Follow.objects.filter(user=request.user, author=author)
-    is_follower.delete()
+    follower = Follow.objects.filter(user=request.user, author=author)
+    follower.delete()
 
     return redirect('posts:profile', username=author)

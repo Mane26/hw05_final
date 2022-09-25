@@ -67,13 +67,13 @@ class UserURLTests(TestCase):
         """Страница /create/ после redirect временно перемещается,
         на другой адрес."""
         response = self.client.get('/create/')
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, HTTPStatus.FOUND)
 
     def test_posts_detail_url_redirect_anonymous(self):
         """Страница /post_edit/ перенаправляет анонимного,
         пользователя."""
         response = self.client.get('/post_detail/')
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
 
     def test_unauthorized_user_urls_status_code(self):
         """Проверка status_code для неавторизованного пользователя."""
@@ -162,12 +162,24 @@ class UserURLTests(TestCase):
                 status_code = self.authorized_client.get(url).status_code
                 self.assertEqual(status_code, response_code)
 
-    def test_urls_redirect_client(self):
-        """Редирект, когда не автор пытается редактировать пост"""
-        url1 = '/auth/login/?next=/create/'
-        url2 = f'/auth/login/?next=/posts/{self.post.id}/edit/'
-        pages = {'/create/': url1,
-                 f'/posts/{self.post.id}/edit/': url2}
-        for page, value in pages.items():
-            response = self.client.get(page)
-            self.assertRedirects(response, value)
+    def test_can_edit_post(self):
+        """Проверка редактирования поста НЕ автором поста."""
+        post_author = User.objects.create_user(username='post_author')
+        auth_author = User.objects.create_user(username='post_auth_author')
+        post = Post.objects.create(
+            author=post_author)
+        form_data = {
+            'text': 'Отредактированный текст поста',
+            'group': self.group.id}
+        response = self.authorized_user.post(
+            reverse(
+                'posts:post_edit',
+                args=[post.id]),
+            data=form_data,
+            follow=True)
+        self.auth_author = Client()
+        self.auth_author.force_login(auth_author)
+        self.assertRedirects(
+            response,
+            reverse(
+                'posts:post_detail', kwargs={'post_id': post.id}))

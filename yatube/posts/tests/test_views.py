@@ -1,73 +1,13 @@
-import shutil
-import tempfile
-
-from django.conf import settings
 from django.core.cache import cache
-from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.paginator import Page
 from django.test import Client, TestCase
 from django.urls import reverse
 
 from ..models import Follow, Group, Post, User
+from ..utils import POST_NUMBER
 
 POST_SUM_FOR_PAGINATOR = 13
-page_number_one = 10
 page_number_two = 3
-
-TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
-
-
-class PostPagesTests(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.user = User.objects.create_user(username='auth')
-        cls.group = Group.objects.create(
-            title='Название',
-            slug='address',
-            description='Описание',
-        )
-        small_gif = (
-            b'\x47\x49\x46\x38\x39\x61\x02\x00'
-            b'\x01\x00\x80\x00\x00\x00\x00\x00'
-            b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
-            b'\x00\x00\x00\x2C\x00\x00\x00\x00'
-            b'\x02\x00\x01\x00\x00\x02\x02\x0C'
-            b'\x0A\x00\x3B'
-        )
-        uploaded = SimpleUploadedFile(
-            name='small.gif',
-            content=small_gif,
-            content_type='image/gif'
-        )
-        cls.post = Post.objects.create(
-            text='Текст',
-            author=cls.user,
-            group=cls.group,
-            image=uploaded,
-        )
-        cls.user = User.objects.create_user(
-            username='Пользователь без постов'
-        )
-
-    @classmethod
-    def tearDownClass(cls):
-        super().tearDownClass()
-        shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
-
-    def setUp(self):
-        self.authorized_client = Client()
-        self.authorized_client.force_login(self.user)
-        cache.clear()
-
-    def check_post_info(self, post):
-        """Проверка атрибутов поста"""
-        with self.subTest(post=post):
-            self.assertEqual(post.text, self.post.text)
-            self.assertEqual(post.author, self.post.author)
-            self.assertEqual(post.group.id, self.post.group.id)
-            self.assertEqual(post.image, self.post.image)
-            self.assertEqual(post.post, self.post.post.id)
 
 
 class TestContextPages(TestCase):
@@ -112,6 +52,7 @@ class TestContextPages(TestCase):
             self.assertEqual(post.text, self.post.text)
             self.assertEqual(post.author, self.post.author)
             self.assertEqual(post.image, self.post.image)
+            self.assertEqual(post.group.id, self.post.group.id)
 
     def test_views_correct_template(self):
         """URL-адрес использует соответствующий шаблон."""
@@ -151,6 +92,8 @@ class TestContextPages(TestCase):
         )
         self.assertEqual(response.context['group'], self.group)
         self.check_post_info(response.context['page_obj'][0])
+        response = self.authorized_client.get(
+            reverse('posts:index'))
 
     def test_detail_page_show_correct_context(self):
         """Шаблон post_detail.html сформирован с правильным контекстом."""
@@ -165,29 +108,10 @@ class TestContextPages(TestCase):
         response = TestContextPages.client.get(
             reverse('posts:profile', args=[TestContextPages.author.username])
         )
-        post = TestContextPages.post
         author = TestContextPages.author
         response_post = response.context.get('page_obj').object_list[0]
         post_author = response_post.author
-        post_group = response_post.group
-        post_text = response_post.text
-        post_image = response_post.image
         self.assertEqual(post_author, author)
-        self.assertEqual(post_group, TestContextPages.group)
-        self.assertEqual(post_text, post.text)
-        self.assertEqual(post_image, post.image)
-
-    def check_post_in_page(self, url, text, user, group):
-        response = self.client_auth.get(url)
-        paginator = response.context.get('paginator')
-        if paginator is not None:
-            self.assertEqual(paginator.count, 1)
-            post = response.context['page'][0]
-        else:
-            post = response.context['post']
-        self.assertEqual(post.text, text)
-        self.assertEqual(post.author, user)
-        self.assertEqual(post.group, group)
 
     def test_post_appears_on_pages(self):
         """ После публикации поста новый пост
@@ -241,11 +165,6 @@ class TestPaginatorPages(TestCase):
                 group=cls.group,
             ))
         cls.post = Post.objects.bulk_create(cls.post_list)
-        cls.templates = {
-            1: reverse('posts:index'),
-            2: reverse('posts:group_list', args=[cls.group.slug]),
-            3: reverse('posts:profile', args=[cls.author.username])
-        }
 
     def setUp(self):
         self.auth_author = Client()
@@ -255,19 +174,12 @@ class TestPaginatorPages(TestCase):
     def test_first_page_contains_ten_records(self):
         """Paginator предоставляет ожидаемое количество постов
          на первую страницую."""
-        templates = {
-            reverse(
-                'posts:index'
-            ),
-            reverse(
-                'posts:group_list',
-                kwargs={'slug': self.group.slug}
-            ),
-            reverse(
-                'posts:profile',
-                kwargs={'username': self.author.username}
-            ),
-        }
+        templates = [
+            reverse('posts:index'),
+            reverse('posts:group_list', kwargs={'slug': self.group.slug}),
+            reverse('posts:profile', kwargs={
+                'username': self.author.username}),
+        ]
         for page in templates:
             with self.subTest(page=page):
                 response_page_number_one = self.auth_author.get(page)
@@ -275,24 +187,21 @@ class TestPaginatorPages(TestCase):
                     'page_obj'
                 )
                 self.assertIsInstance(context_for_first, Page)
-                self.assertEqual(len(context_for_first), page_number_one)
+                self.assertEqual(len(context_for_first), POST_NUMBER)
 
     def test_second_page_contains_three_records(self):
         """Paginator предоставляет ожидаемое количество постов
          на вторую страницую."""
-        templates = {
-            reverse(
-                'posts:index'
-            ),
+        templates = [
+            reverse('posts:index'),
             reverse(
                 'posts:group_list',
-                kwargs={'slug': self.group.slug}
-            ),
+                kwargs={'slug': self.group.slug}),
             reverse(
                 'posts:profile',
                 kwargs={'username': self.author.username}
             ),
-        }
+        ]
         for page in templates:
             with self.subTest(page=page):
                 response_page_number_two = self.auth_author.get(
@@ -301,7 +210,8 @@ class TestPaginatorPages(TestCase):
                 context_for_second = len(
                     response_page_number_two.context.get('page_obj')
                 )
-                post_for_second = len(self.post) - page_number_one
+                post_for_second = len(self.post) - POST_NUMBER
+
                 self.assertEqual(context_for_second, post_for_second)
 
 
@@ -309,15 +219,15 @@ class FollowViewsTest(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.post_autor = User.objects.create(
-            username='post_autor',
+        cls.post_author = User.objects.create(
+            username='post_author',
         )
         cls.post_follower = User.objects.create(
             username='post_follower',
         )
         cls.post = Post.objects.create(
             text='Подпишись на меня',
-            author=cls.post_autor,
+            author=cls.post_author,
         )
 
     def setUp(self):
@@ -330,7 +240,7 @@ class FollowViewsTest(TestCase):
         self.user.save()
         self.author_client.force_login(self.post_follower)
         self.follower_client = Client()
-        self.follower_client.force_login(self.post_autor)
+        self.follower_client.force_login(self.post_author)
         self.text = "Поэты 19века"
         cache.clear()
 
@@ -345,23 +255,20 @@ class FollowViewsTest(TestCase):
 
     def test_follow_on_user(self):
         """Проверка подписки на пользователя."""
-        Follow.objects.create(user=self.user1, author=self.user2)
-        is_follow = Follow.objects.filter(user=self.user1,
-                                          author=self.user2).count()
-        self.assertEqual(is_follow, 1)
-        response_unsubscribe = self.client_auth.post(
-            reverse('posts:profile_unfollow',
-                    args=(self.user2,)), follow=True)
-        self.assertIn("Подписаться", response_unsubscribe.content.decode())
-
-        follow_obj = Follow.objects.filter(user=self.user1,
-                                           author=self.user2).count()
-        self.assertEqual(follow_obj, 0)
+        count_follow = Follow.objects.count()
+        self.follower_client.post(
+            reverse(
+                'posts:profile_follow',
+                kwargs={'username': self.post_follower}))
+        follow = Follow.objects.all().latest('id')
+        self.assertEqual(Follow.objects.count(), count_follow + 1)
+        self.assertEqual(follow.author_id, self.post_follower.id)
+        self.assertEqual(follow.user_id, self.post_author.id)
 
     def test_unfollow_on_user(self):
         """Проверка отписки от пользователя."""
-        Follow.objects.create(
-            user=self.post_autor,
+        follow = Follow.objects.create(
+            user=self.post_author,
             author=self.post_follower)
         count_follow = Follow.objects.count()
         self.follower_client.post(
@@ -369,15 +276,16 @@ class FollowViewsTest(TestCase):
                 'posts:profile_unfollow',
                 kwargs={'username': self.post_follower}))
         self.assertEqual(Follow.objects.count(), count_follow - 1)
+        self.assertFalse(Follow.objects.filter(id=follow.id).exists())
 
     def test_follow_on_authors(self):
         """Проверка записей у тех кто подписан."""
         post = Post.objects.create(
-            author=self.post_autor,
+            author=self.post_author,
             text="Подпишись на меня")
         Follow.objects.create(
             user=self.post_follower,
-            author=self.post_autor)
+            author=self.post_author)
         response = self.author_client.get(
             reverse('posts:follow_index'))
         self.assertIn(post, response.context['page_obj'].object_list)
@@ -385,7 +293,7 @@ class FollowViewsTest(TestCase):
     def test_notfollow_on_authors(self):
         """Проверка записей у тех кто не подписан."""
         post = Post.objects.create(
-            author=self.post_autor,
+            author=self.post_author,
             text="Подпишись на меня")
         response = self.author_client.get(
             reverse('posts:follow_index'))

@@ -1,7 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
 {% load user_filters %}
-
 {% block title %}
 {% if is_edit %}
   Редактировать запись
@@ -11,33 +10,32 @@
 {% endblock %}
 
 {% block content %}
-{% include 'includes/form.html'%}
-  <form method="post" 
+<div class="row justify-content-center"> 
+  <div class="col-md-8 p-5"> 
+    <div class="card"> 
+      <div class="card-header"> 
+     {% include 'includes/form_errors.html'%}
+      <form method="post" 
         {% if is_edit %} 
             action="{% url 'posts:post_edit' post.id %}" 
         {% else %}
             action="{% url 'posts:post_create' %}" 
         {% endif %} enctype="multipart/form-data">
           {% csrf_token %}
-          {% for field in form %}
+          {% for field in form %} 
           <div class="form-group row my-3 p-3">
-            <label for="{{ field.id_for_label }}">
-              {{ field.label }}
-                {% if field.field.required %}
-                  <span class="required text-danger">*</span>
-                {% endif %}
-            </label>
-            {{ field|addclass:'form-control' }}
-              {% if field.help_text %}
-                <small
-                id="{{ field.id_for_label }}-help"
-                class="form-text text-muted"
-               {{ field.help_text|safe }}
-               </small>
-               {% endif %}
-           </div>
-        {% endfor %}
-          <div class="col-md-6 offset-md-4">
+            {% include 'includes/form_label.html'%}
+                  {{ field|addclass:'form-control' }}
+                    {% if field.help_text %}
+                      <small
+                      id="{{ field.id_for_label }}-help"
+                      class="form-text text-muted"
+                     {{ field.help_text|safe }}
+                     </small>
+                     {% endif %}
+                    </div> 
+                  {% endfor %}
+            <div class="col-md-6 offset-md-4">
               <button type="submit" class="btn btn-primary">
                 {% if is_edit %}
                   Сохранить

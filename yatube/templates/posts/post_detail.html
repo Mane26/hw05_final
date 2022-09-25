@@ -36,7 +36,7 @@
     <p class="card-text">
       {{ post.text|linebreaksbr }}
     </p>
-    {% if post.author == requser %}
+    {% if post.author == author.username %}
       <a class="btn btn-primary" href="{% url 'posts:edit' post.id %}">
         Редактировать запись
       </a>

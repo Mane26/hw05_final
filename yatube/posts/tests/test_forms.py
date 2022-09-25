@@ -47,11 +47,11 @@ class PostFormTests(TestCase):
         shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
-        self.client = Client()
         self.authorized_user = Client()
         self.authorized_user.force_login(self.post_author)
         self.auth_user_comm = Client()
         self.auth_user_comm.force_login(self.comm_author)
+        cache.clear()
 
     def test_authorized_user_create_post(self):
         """Проверка создания записи авторизированным клиентом."""
@@ -88,7 +88,6 @@ class PostFormTests(TestCase):
                 image='posts/small.gif',
             ).exclude(id__in=posts_before_posting).exists()
         )
-        cache.clear()
 
     def test_authorized_user_create_comment(self):
         """Проверка создания коментария авторизированным клиентом."""
@@ -115,7 +114,6 @@ class PostFormTests(TestCase):
         )
         self.assertRedirects(
             response, reverse('posts:post_detail', args={post.id}))
-        cache.clear()
 
     def test_nonauthorized_user_create_comment(self):
         """Проверка создания комментария не авторизированным пользователем."""
@@ -163,7 +161,7 @@ class PostFormTests(TestCase):
         self.assertEqual(post_one.text, form_data['text'])
         self.assertEqual(post_one.author, self.post_author)
         self.assertEqual(post_one.group_id, form_data['group'])
-        self.assertIsNotNone(post.image)
+        self.assertIsNotNone(post.image.name, 'posts/small.gif')
 
     def test_nonauthorized_user_create_post(self):
         """Проверка создания записи не авторизированным пользователем."""

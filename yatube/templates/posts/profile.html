@@ -1,59 +1,48 @@
-{% extends 'base.html' %} 
-{% load thumbnail %} 
-{% block title %} 
-    {% if author.get_full_name %} 
-        {{ author.get_full_name }} 
-    {% else %} 
-        {{ author }} 
-    {% endif %} профайл пользователя 
-{% endblock %} 
+{% extends 'base.html' %}
+{% load thumbnail %}
+{% block title %}
+    {% if author.get_full_name %}
+        {{ author.get_full_name }}
+    {% else %}
+        {{ author }}
+    {% endif %} профайл пользователя
+{% endblock %}
 {% block content %}
 
-<main role="main" class="container">
-    <div class="row">
-        <div class="col-md-3 mb-3 mt-1">
-            <div class="card">
-                <div class="card-body">
-                    <div class="h2">
-                        {{prof_user.get_full_name}}
-                    </div>
-                    <div class="h3 text-muted">
-                       {{prof_user.username}}
-                    </div>
-                </div>
-                <ul class="list-group list-group-flush">
-                    <li class="list-group-item">
-                        <div class="h6 text-muted">
-                            Подписчиков: {{count_fol.following.count}}<br/>
-                            Подписан: {{count_fol.follower.count}}
-                        </div>
-                    </li>
-                    {% if prof_user.username != request.user.username%}
-                    <li class="list-group-item">
-                        {% if following %}
-                        <a class="btn btn-primary" href="{% url 'posts:profile_unfollow' author.username  %}">Отписаться</a>
-                        {% else %}
-                        <a class="btn btn-primary" href="{% url 'posts:profile_follow' author.username  %}">Подписаться</a>
-                        {% endif %}
-                    </li>
-                    {% endif %}
-                    <li class="list-group-item">
-                        <div class="h6 text-muted">
-                            Записей: {{count}}
-                        </div>
-                    </li>
-                </ul>
-            </div>
-        </div>
+<div class="card bg-light" style="width: 100%">
+    <div class="card-body">
+        <h1 class="card-title">Все посты пользователя {% if author.get_full_name %}{{ author.get_full_name }}{% else %}{{ author }}{% endif %}</h1>
+        <h3 class="card-text">Всего записей: {{ author.following.count }}</h3>
+        {% if request.user != author %}
+            {% if following %}
+                <a
+                class="btn btn-lg btn-light"
+                href="{% url 'posts:profile_unfollow' author.username %}" role="button"
+                >
+                Отписаться
+                </a>
+                {% else %}
+                <a
+                    class="btn btn-lg btn-primary"
+                    href="{% url 'posts:profile_follow' author.username %}" role="button"
+                >
+                Подписаться
+                </a>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
 
-        <div class="col-md-9">
-            {% for post in page %}
-            {% include 'includes/post_item.html' with post=post %}
-                {% endfor %}
-                {% if page.has_other_pages %}
-                {% include 'posts/includes/paginator.html' with items=page paginator=paginator %}
-                {% endif %}
-            </div>
-        </div>
-</main>
+{% for post in page_obj %}
+{% include 'posts/includes/post_item.html' with post=post %}
+        {% if post.group %}
+            <a href="{% url 'posts:group_list' post.group.slug %}" class="btn btn-primary">Все записи группы "{{ post.group }}"</a>
+        {% endif %}
+    </div>
+</div>
+{% if not forloop.last %}<hr>{% endif %}
+{% endfor %}
+<div class="d-flex justify-content-center">
+    <div>{% include 'posts/includes/paginator.html' %}</div>
+</div>
 {% endblock %}
